@@ -19,7 +19,6 @@
   let transition = false;
 
   onMount(() => {
-    initSound();
     initText();
     initVoiceRecognition();
   });
@@ -191,6 +190,9 @@
   }
 
   function toggleSound() {
+    if (!oscillator) {
+      initSound();
+    }
     sound = !sound;
     gain.gain.value = sound ? 0.3 : 0;
   }
@@ -220,7 +222,9 @@
       takeScreenshot();
     }
 
-    oscillator.frequency.value = params.freq.value;
+    if (oscillator) {
+      oscillator.frequency.value = params.freq.value;
+    }
     material.uniforms.uVolatility.value = params.volatility.value;
     material.uniforms.uSpeed.value = params.speed.value;
     material.uniforms.uSeed.value = params.seed.value;
