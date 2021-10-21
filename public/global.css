@@ -8,23 +8,33 @@ html, body {
 	color: white;
 }
 
-p {
+body {
+	font-size: 1.2em;
+	box-sizing: border-box;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+p, ul {
 	margin: 0;
 	padding: 0;
 }
 
-body {
-	box-sizing: border-box;
-	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+ul {
+    list-style: none;
+}
+
+img {
+	width: 100%;
 }
 
 .lien {
 	color: white;
 	border-bottom: 1px solid white;
-	display: inline;
-	position: absolute;
-	top: 2vw;
-	left: 2vw;
+	display: inline-block;
 	cursor: pointer;
 	z-index: 2;
 }
+
+.selected {
+    border-bottom: 1px solid white !important;
+  }

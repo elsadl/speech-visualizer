@@ -1,39 +1,39 @@
 <script>
   import { onMount } from "svelte";
+  import { serverUrl } from "./stores.js";
+  import { fade } from "svelte/transition";
+  import { lang } from "./lang.js";
   import { defaultParams } from "./params.js";
   import Gallery from "./Gallery.svelte";
-  import { serverUrl } from "./stores";
 
-  let params;
-  let word = "hello";
-  let oscillator;
-  let displayGallery;
-
+  let params = defaultParams;
+  let displayGallery = false;
+  let sound = false;
+  let oscillator, gain;
+  let selectedLang = "fr";
+  let word = lang[selectedLang].greeting;
   let text, material;
   let captured = true;
-
   let recognition;
-
+  let recognizing = false;
   let transition = false;
 
   onMount(() => {
-    displayGallery = false;
-    params = defaultParams;
-    // addSound();
+    initSound();
     initText();
     initVoiceRecognition();
   });
 
   function initText() {
-    word = "hello";
-
     material = new Blotter.LiquidDistortMaterial();
 
     text = new Blotter.Text(word, {
       family: "temeraire, serif",
       style: "italic",
-      size: calculateWidth(word),
+      size: 300,
       fill: "white",
+      paddingRight: 60,
+      paddingLeft: 60,
     });
 
     const blotter = new Blotter(material, {
@@ -42,128 +42,102 @@
 
     const scope = blotter.forText(text);
     scope.appendTo(document.getElementById("word-container"));
+
     animate();
   }
 
   function initVoiceRecognition() {
     recognition = new webkitSpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = false;
+    recognition.lang = selectedLang;
 
-    recognition.lang = "fr-FR";
-    recognition.start();
-
-    recognition.onstart = function () {
-      console.log("recognition onstart");
+    recognition.onstart = () => {
+      console.log("recognition start");
+      recognizing = true;
     };
 
-    recognition.onend = function () {
-      console.log("recognition onend");
+    recognition.onend = () => {
+      console.log("recognition end");
+      recognizing = false;
     };
 
-    recognition.onspeechstart = (event) => {
+    recognition.onspeechstart = () => {
       console.log("speech start");
-      console.log("DÉBUT TRANSITION !!!");
+      if (!captured) {
+        takeScreenshot();
+      }
       params.seed.max = getNewSeed();
       transition = true;
     };
 
-    recognition.onspeechend = (event) => {
-      console.log("speech end");
-      console.log("FIN TRANSITION !!!");
-      params.seed.min = params.seed.max;
-      transition = false;
-    };
-
-    recognition.onresult = function (event) {
+    recognition.onresult = (event) => {
       console.log("result");
       console.log(event.results);
-      // let word = event.results[0][0].transcript.trim().split(" ")[0];
       if (event.results[0].isFinal) {
-        word = event.results[0][0].transcript.replace(" ", "");
-        word = word.toLowerCase();
-        console.log("change text");
+        word = event.results[0][0].transcript
+          .trim()
+          .split(" ")
+          .slice(0, 5)
+          .join(" ")
+          .toLowerCase();
         changeText(word);
-        console.log("stop recognition");
-        recognition.stop();
-        setTimeout(() => {
-          console.log("restart recognition");
-          recognition.start();
-        }, 200);
+        params.seed.min = params.seed.max;
+        captured = false;
+        transition = false;
+        if (recognizing) {
+          recognition.stop();
+        }
       }
     };
 
-    recognition.onnomatch = function () {
-      console.log("speech not recognized");
-    };
-
-    recognition.onerror = function (event) {
+    recognition.onerror = (event) => {
       console.log(event);
-
-      // setTimeout(() => {
-      //   console.log("restart recognition");
-      //   recognition.start();
-      // }, 200);
     };
   }
 
   function changeText(string) {
-    if (!captured) {
-      takeScreenshot();
-    }
     text.value = string;
-    text.size = calculateWidth(string);
     text.needsUpdate = true;
-    captured = false;
   }
 
-  function stopExperience() {
-    document.getElementById("word-container").innerHTML = "";
-    recognition.stop();
-  }
-
-  function restartExperience() {
+  function resumeExperience() {
     displayGallery = false;
-    animate();
+    captured = true;
     params = defaultParams;
+    if (sound) {
+      gain.gain.value = 0.3;
+    }
+    animate();
     initText();
-    console.log("eeeet ça redémarre");
-    recognition.start();
   }
 
-  function addSound() {
-    let audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    let gain = audioContext.createGain();
+  function initSound() {
+    const audioContext = new (window.AudioContext ||
+      window.webkitAudioContext)();
+    gain = audioContext.createGain();
     oscillator = audioContext.createOscillator();
     oscillator.connect(gain);
     gain.connect(audioContext.destination);
-    oscillator.type = "sawtooth";
+    oscillator.type = "triangle";
     oscillator.frequency.value = params.freq.value;
-    gain.gain.value = volume;
+    gain.gain.value = sound ? 0.3 : 0;
     oscillator.start();
-    console.log(oscillator);
   }
 
   function takeScreenshot() {
-    let img = document
+    const img = document
       .querySelector("#word-container canvas")
       .toDataURL("image/png");
-    console.log("capture d'écran !!!!");
-    console.log(img);
-
+    console.log("capture d'écran !!", word);
     captured = true;
-
-    let newScreenshot = {
-      title: word,
+    let filename = word.replace(/'/g, "").replace(/ /g, "");
+    const newScreenshot = {
+      title: filename,
       file: img,
     };
-
     postScreenshot(newScreenshot);
-
-    // to do : envoyer sur le serveur
   }
 
-  let postScreenshot = async (screenshot) => {
+  const postScreenshot = async (screenshot) => {
     const res = await fetch(serverUrl, {
       method: "POST",
       headers: {
@@ -174,10 +148,18 @@
   };
 
   function openGallery() {
-    console.log("openGallery");
-    displayGallery = true;
-    console.log(displayGallery);
-    stopExperience();
+    if (recognizing) {
+      recognition.stop();
+    }
+    transition = true;
+    setTimeout(() => {
+      if (sound) {
+        gain.gain.value = 0;
+      }
+      displayGallery = true;
+      transition = false;
+      document.getElementById("word-container").innerHTML = "";
+    }, 400);
   }
 
   function getNewSeed() {
@@ -188,8 +170,29 @@
     return (max - min) * fraction + min;
   }
 
-  function calculateWidth(string) {
-    return (window.innerWidth * 2) / string.length;
+  function handleKeydown(event) {
+    if (recognizing) {
+      return;
+    }
+    if (event.keyCode != 83) {
+      return;
+    }
+    recognition.start();
+    console.log("on t'écoute");
+  }
+
+  function handleKeyup(event) {
+    if (event.keyCode != 83) {
+      return;
+    }
+    recognition.stop();
+    transition = false;
+    console.log("fini de parler");
+  }
+
+  function toggleSound() {
+    sound = !sound;
+    gain.gain.value = sound ? 0.3 : 0;
   }
 
   function animate() {
@@ -217,38 +220,69 @@
       takeScreenshot();
     }
 
-    // console.log("~~~~~~~~~~~~~~");
-    // console.log("transition", params.freq.value);
-    // console.log("volatility", params.volatility.value);
-    // console.log("speed", params.speed.value);
-    // console.log("blur", params.blur.value);
-    // oscillator.frequency.value = params.freq.value;
-
+    oscillator.frequency.value = params.freq.value;
     material.uniforms.uVolatility.value = params.volatility.value;
     material.uniforms.uSpeed.value = params.speed.value;
     material.uniforms.uSeed.value = params.seed.value;
 
     requestAnimationFrame(animate);
   }
+
+  function changeLanguage(event) {
+    selectedLang = event.target.dataset.lang;
+    recognition.lang = lang[selectedLang].code;
+    transition = true;
+    setTimeout(() => {
+      changeText(lang[selectedLang].greeting);
+      transition = false;
+    }, 600);
+  }
 </script>
 
+<svelte:window on:keydown={handleKeydown} on:keyup={handleKeyup} />
+
 <main>
-  <p class="lien" on:click={openGallery}>voir la galerie</p>
-  <div
-    style="filter: blur({params ? params.blur.value : 0}px); opacity: {params
-      ? params.opacity.value
-      : 0}; transform: scaleY({params ? params.scale.value : 1});"
-    id="word-container"
-  />
-  <div id="grain" />
+  {#if !displayGallery}
+    <div transition:fade>
+      <p class="lien to-gallery" on:click={openGallery}>voir la galerie</p>
+      <ul class="lang">
+        {#each Object.values(lang) as el}
+          <li
+            on:click={changeLanguage}
+            class={el.code.slice(0, 2) === selectedLang ? "selected" : ""}
+            data-lang={el.code.slice(0, 2)}
+          >
+            {el.code.slice(0, 2)}
+          </li>
+        {/each}
+      </ul>
+      <p on:click={toggleSound} class="sound {sound ? 'selected' : ''}">
+        {sound ? "sound on" : "sound off"}
+      </p>
+    </div>
+  {/if}
+  <div id="wrapper">
+    <div
+      style="filter: blur({params ? params.blur.value : 0}px); opacity: {params
+        ? params.opacity.value
+        : 0}; transform: scaleY({params ? params.scale.value : 1});"
+      id="word-container"
+    />
+    <div id="grain" />
+  </div>
   {#if displayGallery}
-    <Gallery on:restart={restartExperience} />
+    <div transition:fade>
+      <Gallery on:close={resumeExperience} />
+    </div>
   {/if}
 </main>
 
 <style>
-  main {
-    background-color: black;
+  #wrapper {
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    position: absolute;
   }
 
   #word-container {
@@ -258,15 +292,12 @@
     align-items: center;
     justify-items: center;
     position: absolute;
-    top: 0;
-    left: 0;
-    transition: background-color 200ms;
   }
 
   :global(#word-container canvas) {
     position: absolute;
     width: 100vw !important;
-    height: 100vh !important;
+    height: 80vh !important;
   }
 
   #grain {
@@ -275,5 +306,36 @@
     height: 100vh;
     width: 100vw;
     opacity: 0.75;
+  }
+
+  .to-gallery {
+    position: absolute;
+    top: 2vw;
+    left: 2vw;
+  }
+
+  .lang {
+    display: flex;
+    z-index: 2;
+    position: absolute;
+    top: 2vw;
+    right: 2vw;
+  }
+
+  .sound {
+    border-bottom: 1px solid transparent;
+    z-index: 2;
+    position: absolute;
+    bottom: 2vw;
+    left: 2vw;
+    cursor: pointer;
+  }
+
+  ul li {
+    cursor: pointer;
+  }
+
+  ul li + li {
+    margin-left: 1em;
   }
 </style>

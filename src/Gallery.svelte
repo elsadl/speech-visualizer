@@ -1,32 +1,45 @@
 <script>
   import { onMount, createEventDispatcher } from "svelte";
+  import { fade } from 'svelte/transition';
 
   const dispatch = createEventDispatcher();
 
   const baseUrl = "http://localhost:3001/screenshots";
+  const step = 10;
   let screenshots = [];
+  let count = step;
+
+  $: screenshotsToDisplay = [];
 
   onMount(async () => {
-    let res = await fetch(baseUrl);
+    const res = await fetch(baseUrl);
     screenshots = await res.json();
-    screenshots = screenshots.experiments;
-    console.log(screenshots);
+    screenshots = screenshots.experiments.reverse();
+    screenshotsToDisplay = screenshots.slice(0, step);
   });
 
+  function displayMore() {
+    count = count + step;
+    screenshotsToDisplay = screenshots.slice(0, count);
+  }
+
   function closeGallery() {
-    dispatch("restart");
+    dispatch("close");
   }
 </script>
 
 <div id="gallery">
-  <p class="lien" on:click={closeGallery}>quitter la galerie</p>
+  <p class="lien close" on:click={closeGallery}>← retour</p>
   <div id="screenshots">
-    {#each screenshots as screenshot}
-      <div class="screenshot">
-        <p>{screenshot.title}.png</p>
-        <img src={screenshot.img} alt={screenshot.title}>
+    {#each screenshotsToDisplay as screenshot}
+      <div transition:fade class="screenshot">
+        <p class="filename">{screenshot.title}.png // {screenshot.createdAt}</p>
+        <img src={screenshot.file} alt={screenshot.title} />
       </div>
     {/each}
+    {#if count < screenshots.length}
+      <p class="lien plus" on:click={displayMore}>+ voir plus</p>
+    {/if}
   </div>
 </div>
 
@@ -47,7 +60,40 @@
     max-width: 600px;
   }
 
+  .screenshot {
+    position: relative;
+    border-bottom: 1px solid #1b1b1b;
+  }
+
+  .screenshot:last-child {
+    border-bottom: 0;
+    padding-bottom: 100px;
+  }
+
+  .screenshot img {
+    height: 40vh;
+  }
+
   .screenshot + .screenshot {
-    padding-top: 2em;
+    margin-top: 2em;
+  }
+
+  .filename {
+    font-family: monospace;
+    font-size: 0.65em;
+    display: inline;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .lien.close {
+    position: absolute;
+    top: 2vw;
+    left: 2vw;
+  }
+
+  .lien.plus {
+    margin: 40px 0 140px;
   }
 </style>

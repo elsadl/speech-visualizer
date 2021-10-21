@@ -43,7 +43,7 @@ export let defaultParams = {
     },
     freq: {
       value: 80,
-      min: 80,
+      min: 100,
       max: 300,
       in: 0.05,
       out: 0.1,
