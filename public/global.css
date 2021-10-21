@@ -1,0 +1,30 @@
+html, body {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	background-color: black;
+	color: white;
+}
+
+p {
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	box-sizing: border-box;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+.lien {
+	color: white;
+	border-bottom: 1px solid white;
+	display: inline;
+	position: absolute;
+	top: 2vw;
+	left: 2vw;
+	cursor: pointer;
+	z-index: 2;
+}
