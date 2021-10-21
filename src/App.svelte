@@ -164,7 +164,6 @@
   }
 
   let postScreenshot = async (screenshot) => {
-    console.log("allo");
     const res = await fetch(serverUrl, {
       method: "POST",
       headers: {
