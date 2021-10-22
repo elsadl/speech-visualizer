@@ -264,6 +264,11 @@
       <p on:click={toggleSound} class="sound {sound ? 'selected' : ''}">
         {sound ? "sound on" : "sound off"}
       </p>
+      {#if !recognition}
+        <p class="error">
+          la reconnaissance vocale n'est pas supportée par votre navigateur
+        </p>
+      {/if}
     </div>
   {/if}
   <div id="wrapper">
@@ -342,5 +347,21 @@
 
   ul li + li {
     margin-left: 1em;
+  }
+
+  .error {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    background-color: #fef4f6;
+    color: #f0506e;
+    display: inline-block;
+    font-size: 0.8em;
+    width: max-content;
+    padding: 8px;
+    border-radius: 8px;
+    border: 2px solid #f0506e;
   }
 </style>
