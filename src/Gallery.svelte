@@ -1,10 +1,10 @@
 <script>
   import { onMount, createEventDispatcher } from "svelte";
   import { fade } from 'svelte/transition';
+  import { serverUrl } from "./stores.js";
 
   const dispatch = createEventDispatcher();
 
-  const baseUrl = "http://localhost:3001/screenshots";
   const step = 10;
   let screenshots = [];
   let count = step;
@@ -12,7 +12,7 @@
   $: screenshotsToDisplay = [];
 
   onMount(async () => {
-    const res = await fetch(baseUrl);
+    const res = await fetch(serverUrl);
     screenshots = await res.json();
     screenshots = screenshots.experiments.reverse();
     screenshotsToDisplay = screenshots.slice(0, step);
