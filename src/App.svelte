@@ -105,6 +105,7 @@
     if (sound) {
       gain.gain.value = 0.3;
     }
+    word = lang[selectedLang].greeting;
     animate();
     initText();
   }
